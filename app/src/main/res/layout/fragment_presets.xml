@@ -1,0 +1,14 @@
+<GridLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:rowCount="2"
+    android:columnCount="2"
+    android:padding="16dp">
+
+    <Button android:id="@+id/button1" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1"/>
+    <Button android:id="@+id/button2" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1"/>
+    <Button android:id="@+id/button3" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1"/>
+    <Button android:id="@+id/button4" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1"/>
+
+</GridLayout>
