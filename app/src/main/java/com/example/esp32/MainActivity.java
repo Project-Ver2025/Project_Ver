@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothGattCharacteristic writableCharacteristic;
     private BluetoothDevice targetDevice;
     private TextToSpeech textToSpeech;
+    private String lastStatusText = "Disconnected";
+    private int lastStatusColor = Color.RED;
     private boolean isSpeaking = false;
     private boolean cancelled = false;
     private float currentSpeechRate = 1.0f;
@@ -50,11 +52,31 @@ public class MainActivity extends AppCompatActivity {
     private final String CHARACTERISTIC_UUID = "abcd1234-abcd-1234-abcd-1234567890ab";
     private static final int PERMISSION_REQUEST_CODE = 1001;
 
+    private int reconnectAttempts = 0;
+    private static final int MAX_RECONNECT_ATTEMPTS = 3;
+    private static final long RECONNECT_DELAY_MS = 3000; // 3 seconds
+
+    public enum ConnectionState {
+        SCANNING,
+        CONNECTING,
+        CONNECTED,
+        DISCONNECTED
+    }
+
+    private ConnectionState connectionState = ConnectionState.DISCONNECTED;
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Load saved speech rate
+        currentSpeechRate = getSharedPreferences("app_prefs", MODE_PRIVATE)
+                .getFloat("speech_rate", 1.0f);
+
 
         // Initialize Bluetooth FIRST
         BluetoothManager manager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
@@ -124,6 +146,8 @@ public class MainActivity extends AppCompatActivity {
                 selected = new SettingsFragment(textToSpeech, currentSpeechRate, this::reconnectGatt);
             } else if (itemId == R.id.nav_presets) {
                 selected = new PresetsFragment(this::sendBLECommand);
+            } else if (itemId == R.id.nav_send) {
+                selected = new SendFragment(this::sendBLECommand);
             } else {
                 selected = new ControlFragment(this::sendBLECommand);
             }
@@ -228,7 +252,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startScan() {
-        // Create the callback as a class variable so we can stop it later
+        connectionState = ConnectionState.SCANNING;
+        updateConnectionStatusUI("Scanning...", Color.YELLOW);
+
         scanCallback = new ScanCallback() {
             @Override
             public void onScanResult(int callbackType, ScanResult result) {
@@ -238,6 +264,10 @@ public class MainActivity extends AppCompatActivity {
                         result.getScanRecord().getServiceUuids().contains(ParcelUuid.fromString(SERVICE_UUID))) {
 
                     bluetoothLeScanner.stopScan(this);
+
+                    connectionState = ConnectionState.CONNECTING;
+                    updateConnectionStatusUI("Connecting...", Color.CYAN);
+
                     bluetoothGatt = device.connectGatt(MainActivity.this, false, gattCallback);
                     targetDevice = device;
                 }
@@ -246,6 +276,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onScanFailed(int errorCode) {
                 Log.e("BLE", "Scan failed with error code: " + errorCode);
+                connectionState = ConnectionState.DISCONNECTED;
+                updateConnectionStatusUI("Scan failed", Color.RED);
             }
         };
 
@@ -253,6 +285,7 @@ public class MainActivity extends AppCompatActivity {
             bluetoothLeScanner.startScan(scanCallback);
         }
     }
+
 
     private void reconnectGatt() {
         if (bluetoothGatt != null) {
@@ -264,28 +297,53 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateConnectionStatusUI(String status, int color) {
+        lastStatusText = status;
+        lastStatusColor = color;
+
+        Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (fragment instanceof SettingsFragment) {
+            ((SettingsFragment) fragment).setConnectionStatus(status, color);
+        }
+    }
+
+    public String getLastStatusText() { return lastStatusText; }
+    public int getLastStatusColor() { return lastStatusColor; }
+
+
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
-            runOnUiThread(() -> {
-                Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-                if (fragment instanceof SettingsFragment) {
-                    SettingsFragment settingsFragment = (SettingsFragment) fragment;
 
-                    if (newState == BluetoothProfile.STATE_CONNECTED) {
-                        settingsFragment.setConnectionStatus("Connected", Color.GREEN);
-                    } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                        settingsFragment.setConnectionStatus("Disconnected", Color.RED);
-                    }
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                connectionState = ConnectionState.CONNECTED;
+                runOnUiThread(() -> updateConnectionStatusUI("Connected", Color.GREEN));
+                bluetoothGatt.discoverServices();
+                reconnectAttempts = 0;
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                connectionState = ConnectionState.DISCONNECTED;
+                runOnUiThread(() -> updateConnectionStatusUI("Disconnected", Color.RED));
+
+                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    reconnectAttempts++;
+                    Log.d("BLE", "Reconnecting attempt " + reconnectAttempts);
+                    new Handler(getMainLooper()).postDelayed(this::attemptReconnect, RECONNECT_DELAY_MS);
+                } else {
+                    Log.e("BLE", "Max reconnect attempts reached.");
                 }
-            });
-
+            }
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 bluetoothGatt.discoverServices();
             }
         }
+        private void attemptReconnect() {
+            if (targetDevice != null) {
+                bluetoothGatt = targetDevice.connectGatt(MainActivity.this, false, gattCallback);
+            }
+        }
+
 
 
         @Override
