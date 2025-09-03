@@ -3,47 +3,28 @@
     android:orientation="vertical"
     android:padding="24dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:gravity="center">
 
     <EditText
         android:id="@+id/inputText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter text to send"/>
+        android:hint="Enter text to send"
+        android:minLines="4"
+        android:gravity="top|start"
+        android:textSize="18sp"
+        android:padding="12dp"
+        android:background="@android:drawable/edit_text" />
 
-    <LinearLayout
+    <Button
+        android:id="@+id/sendTextButton"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="16dp"
-        android:weightSum="2">
-
-        <Button
-            android:id="@+id/sendTextButton"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:text="Send"/>
-
-        <Button
-            android:id="@+id/saveTextButton"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:text="Save"/>
-    </LinearLayout>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Saved Messages:"
-        android:textStyle="bold"
-        android:layout_marginTop="24dp"/>
-
-    <ListView
-        android:id="@+id/savedMessagesList"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:dividerHeight="1dp"/>
+        android:layout_height="80dp"
+        android:layout_marginTop="20dp"
+        android:text="Send"
+        android:textSize="22sp"
+        android:backgroundTint="@android:color/holo_blue_light"
+        android:textColor="@android:color/white"
+        android:padding="16dp"/>
 </LinearLayout>

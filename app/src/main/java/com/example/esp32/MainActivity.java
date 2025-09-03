@@ -1,19 +1,16 @@
 package com.example.esp32;
 
 import android.Manifest;
-import android.bluetooth.*;
-import android.bluetooth.le.*;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.ParcelUuid;
-import android.speech.tts.TextToSpeech;
-import android.speech.tts.UtteranceProgressListener;
+import android.os.IBinder;
 import android.util.Log;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -25,117 +22,63 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
-import java.util.LinkedList;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Queue;
-import java.util.UUID;
+public class MainActivity extends AppCompatActivity implements BluetoothTTSService.ServiceCallback {
 
-public class MainActivity extends AppCompatActivity {
-
-    private final StringBuilder messageBuffer = new StringBuilder();
-    private final Queue<String> ttsQueue = new LinkedList<>();
-    private BluetoothLeScanner bluetoothLeScanner;
-    private ScanCallback scanCallback;
-
-    private BluetoothGatt bluetoothGatt;
-    private BluetoothGattCharacteristic writableCharacteristic;
-    private BluetoothDevice targetDevice;
-    private TextToSpeech textToSpeech;
+    private static final int PERMISSION_REQUEST_CODE = 1001;
+    private BluetoothTTSService bluetoothTTSService;
+    private boolean serviceBound = false;
     private String lastStatusText = "Disconnected";
     private int lastStatusColor = Color.RED;
-    private boolean isSpeaking = false;
-    private boolean cancelled = false;
-    private float currentSpeechRate = 1.0f;
 
-    private final String SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab";
-    private final String CHARACTERISTIC_UUID = "abcd1234-abcd-1234-abcd-1234567890ab";
-    private static final int PERMISSION_REQUEST_CODE = 1001;
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            BluetoothTTSService.LocalBinder binder = (BluetoothTTSService.LocalBinder) service;
+            bluetoothTTSService = binder.getService();
+            bluetoothTTSService.setServiceCallback(MainActivity.this);
+            serviceBound = true;
+            Log.d("MainActivity", "Service connected");
 
-    private int reconnectAttempts = 0;
-    private static final int MAX_RECONNECT_ATTEMPTS = 3;
-    private static final long RECONNECT_DELAY_MS = 3000; // 3 seconds
+            // Update UI with current service state
+            updateConnectionStatusUI(
+                    bluetoothTTSService.getConnectionStatusText(),
+                    bluetoothTTSService.getConnectionStatusColor()
+            );
+        }
 
-    public enum ConnectionState {
-        SCANNING,
-        CONNECTING,
-        CONNECTED,
-        DISCONNECTED
-    }
-
-    private ConnectionState connectionState = ConnectionState.DISCONNECTED;
-
-
-
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            bluetoothTTSService = null;
+            serviceBound = false;
+            Log.d("MainActivity", "Service disconnected");
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Load saved speech rate
-        currentSpeechRate = getSharedPreferences("app_prefs", MODE_PRIVATE)
-                .getFloat("speech_rate", 1.0f);
-
-
-        // Initialize Bluetooth FIRST
-        BluetoothManager manager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        BluetoothAdapter bluetoothAdapter = manager.getAdapter();
-
-        // Add null checks for safety
-        if (bluetoothAdapter == null) {
-            Toast.makeText(this, "Bluetooth not supported on this device", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
-
-        if (!bluetoothAdapter.isEnabled()) {
-            Toast.makeText(this, "Please enable Bluetooth", Toast.LENGTH_LONG).show();
-            // Optionally request to enable Bluetooth
-            return;
-        }
-
-        bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-
-        if (bluetoothLeScanner == null) {
-            Toast.makeText(this, "BLE not supported on this device", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
-
-        // Now check permissions and start scan
+        // Check permissions first
         if (!hasPermissions()) {
             requestPermissions();
         } else {
-            startScan();
+            startAndBindService();
         }
 
-        // Remove the duplicate permission check code that was here before
+        setupBottomNavigation();
+    }
 
-        // Initialize TextToSpeech
-        textToSpeech = new TextToSpeech(this, status -> {
-            if (status == TextToSpeech.SUCCESS) {
-                textToSpeech.setLanguage(Locale.US);
-                textToSpeech.setSpeechRate(currentSpeechRate);
-                textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override
-                    public void onStart(String utteranceId) { }
+    public boolean isServiceBound() {
+        return serviceBound && bluetoothTTSService != null;
+    }
 
-                    @Override
-                    public void onDone(String utteranceId) {
-                        isSpeaking = false;
-                        if (!cancelled) speakNextFromQueue();
-                    }
+    public BluetoothTTSService getBluetoothService() {
+        return bluetoothTTSService;
+    }
 
-                    @Override
-                    public void onError(String utteranceId) {
-                        isSpeaking = false;
-                        if (!cancelled) speakNextFromQueue();
-                    }
-                });
-            }
-        });
 
+    private void setupBottomNavigation() {
         // Bottom navigation setup
         BottomNavigationView navView = findViewById(R.id.bottom_navigation);
         navView.setOnItemSelectedListener(item -> {
@@ -143,7 +86,13 @@ public class MainActivity extends AppCompatActivity {
             Fragment selected;
 
             if (itemId == R.id.nav_settings) {
-                selected = new SettingsFragment(textToSpeech, currentSpeechRate, this::reconnectGatt);
+                selected = new SettingsFragment(
+                        serviceBound && bluetoothTTSService != null ?
+                                bluetoothTTSService.textToSpeech : null,
+                        getSharedPreferences("app_prefs", MODE_PRIVATE).getFloat("speech_rate", 1.0f),
+                        serviceBound && bluetoothTTSService != null ?
+                                bluetoothTTSService::reconnectGatt : null
+                );
             } else if (itemId == R.id.nav_presets) {
                 selected = new PresetsFragment(this::sendBLECommand);
             } else if (itemId == R.id.nav_send) {
@@ -151,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 selected = new ControlFragment(this::sendBLECommand);
             }
+
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, selected)
                     .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE)
@@ -160,6 +110,19 @@ public class MainActivity extends AppCompatActivity {
 
         // Load default fragment
         navView.setSelectedItemId(R.id.nav_control);
+    }
+
+    private void startAndBindService() {
+        // Start the foreground service
+        Intent serviceIntent = new Intent(this, BluetoothTTSService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+
+        // Bind to the service to communicate with it
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
     private boolean hasPermissions() {
@@ -190,111 +153,59 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Handle permission result
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d("BLE", "Permissions granted!");
-                startScan();
+                startAndBindService();
             } else {
                 Log.e("BLE", "Permissions denied!");
-                Toast.makeText(this, "Bluetooth permissions are required.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Bluetooth permissions are required for the app to function.", Toast.LENGTH_LONG).show();
+                finish();
             }
         }
     }
-
 
     private void sendBLECommand(String command) {
-        if (bluetoothGatt != null && writableCharacteristic != null) {
-            writableCharacteristic.setValue(command);
-            bluetoothGatt.writeCharacteristic(writableCharacteristic);
-        }
+        if (serviceBound && bluetoothTTSService != null) {
+            bluetoothTTSService.sendBLECommand(command);
 
-        if (Objects.equals(command, "cancel")) {
-
-            // Immediately stop any ongoing speech
-            if (textToSpeech != null && textToSpeech.isSpeaking()) {
-                textToSpeech.stop();
-            }
-
-            // Clear remaining messages
-            ttsQueue.clear();
-
-            isSpeaking = false; // Reset speaking flag to allow future TTS
-
-            Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-            if (fragment instanceof ControlFragment) {
-                ControlFragment controlFragment = (ControlFragment) fragment;
-                controlFragment.startStopButton.setText("Start");
-                controlFragment.isRecording = false;
-            }
-        }
-
-    }
-
-    private void speakNextFromQueue() {
-//        if (cancelled) {
-//            ttsQueue.clear();
-//            isSpeaking = false;
-//            cancelled = false;
-//            return;
-//        }
-
-        if (!isSpeaking && !ttsQueue.isEmpty()) {
-            String msg = ttsQueue.poll();
-            isSpeaking = true;
-            Bundle params = new Bundle();
-            params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "TTS_ID");
-            textToSpeech.speak(msg, TextToSpeech.QUEUE_FLUSH, params, "TTS_ID");
-        }
-    }
-
-    private void startScan() {
-        connectionState = ConnectionState.SCANNING;
-        updateConnectionStatusUI("Scanning...", Color.YELLOW);
-
-        scanCallback = new ScanCallback() {
-            @Override
-            public void onScanResult(int callbackType, ScanResult result) {
-                BluetoothDevice device = result.getDevice();
-                if (device != null && result.getScanRecord() != null &&
-                        result.getScanRecord().getServiceUuids() != null &&
-                        result.getScanRecord().getServiceUuids().contains(ParcelUuid.fromString(SERVICE_UUID))) {
-
-                    bluetoothLeScanner.stopScan(this);
-
-                    connectionState = ConnectionState.CONNECTING;
-                    updateConnectionStatusUI("Connecting...", Color.CYAN);
-
-                    bluetoothGatt = device.connectGatt(MainActivity.this, false, gattCallback);
-                    targetDevice = device;
+            // Handle UI updates for cancel command
+            if ("cancel".equals(command)) {
+                Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                if (fragment instanceof ControlFragment) {
+                    ControlFragment controlFragment = (ControlFragment) fragment;
+                    controlFragment.startStopButton.setText("Start");
+                    controlFragment.isRecording = false;
                 }
             }
 
-            @Override
-            public void onScanFailed(int errorCode) {
-                Log.e("BLE", "Scan failed with error code: " + errorCode);
-                connectionState = ConnectionState.DISCONNECTED;
-                updateConnectionStatusUI("Scan failed", Color.RED);
+            if ("stop".equals(command)) {
+                // Add a small delay to let any completion sound play first
+                new android.os.Handler(getMainLooper()).postDelayed(() -> {
+                    if (serviceBound && bluetoothTTSService != null) {
+                        bluetoothTTSService.startLoadingSoundFromCommand();
+                    }
+                }, 500);
             }
-        };
 
-        if (bluetoothLeScanner != null) {
-            bluetoothLeScanner.startScan(scanCallback);
+            if ("start".equals(command) || "cancel".equals(command)) {
+                if (serviceBound && bluetoothTTSService != null) {
+                    bluetoothTTSService.stopLoadingSoundFromCommand();
+                }
+            }
+
+        } else {
+            Toast.makeText(this, "Service not connected", Toast.LENGTH_SHORT).show();
         }
     }
 
-
-    private void reconnectGatt() {
-        if (bluetoothGatt != null) {
-            bluetoothGatt.disconnect();
-            bluetoothGatt.close();
-        }
-        if (targetDevice != null) {
-            bluetoothGatt = targetDevice.connectGatt(this, false, gattCallback);
-        }
+    // Service callback implementation
+    @Override
+    public void onConnectionStateChanged(String status, int color) {
+        runOnUiThread(() -> updateConnectionStatusUI(status, color));
     }
 
     private void updateConnectionStatusUI(String status, int color) {
@@ -307,103 +218,55 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public String getLastStatusText() { return lastStatusText; }
-    public int getLastStatusColor() { return lastStatusColor; }
+    public String getLastStatusText() {
+        return lastStatusText;
+    }
 
+    public int getLastStatusColor() {
+        return lastStatusColor;
+    }
 
-    private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
-        @Override
-        public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-            super.onConnectionStateChange(gatt, status, newState);
-
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                connectionState = ConnectionState.CONNECTED;
-                runOnUiThread(() -> updateConnectionStatusUI("Connected", Color.GREEN));
-                bluetoothGatt.discoverServices();
-                reconnectAttempts = 0;
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                connectionState = ConnectionState.DISCONNECTED;
-                runOnUiThread(() -> updateConnectionStatusUI("Disconnected", Color.RED));
-
-                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                    reconnectAttempts++;
-                    Log.d("BLE", "Reconnecting attempt " + reconnectAttempts);
-                    new Handler(getMainLooper()).postDelayed(this::attemptReconnect, RECONNECT_DELAY_MS);
-                } else {
-                    Log.e("BLE", "Max reconnect attempts reached.");
-                }
-            }
-
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                bluetoothGatt.discoverServices();
-            }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // If we have permissions but service isn't bound, bind it
+        if (hasPermissions() && !serviceBound) {
+            Intent intent = new Intent(this, BluetoothTTSService.class);
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
         }
-        private void attemptReconnect() {
-            if (targetDevice != null) {
-                bluetoothGatt = targetDevice.connectGatt(MainActivity.this, false, gattCallback);
-            }
-        }
+    }
 
-
-
-        @Override
-        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-            BluetoothGattService service = gatt.getService(UUID.fromString(SERVICE_UUID));
-            if (service != null) {
-                writableCharacteristic = service.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID));
-
-                gatt.setCharacteristicNotification(writableCharacteristic, true);
-                BluetoothGattDescriptor descriptor = writableCharacteristic.getDescriptor(
-                        UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
-                if (descriptor != null) {
-                    descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                    gatt.writeDescriptor(descriptor);
-                }
-            }
-        }
-
-        @Override
-        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            String chunk = characteristic.getStringValue(0);
-            runOnUiThread(() -> {
-                messageBuffer.append(chunk);
-                String bufferStr = messageBuffer.toString();
-                int endIndex = bufferStr.indexOf("<EOM>");
-                if (endIndex != -1) {
-                    String fullMessage = bufferStr.substring(0, endIndex).trim();
-                    messageBuffer.delete(0, endIndex + 5);
-                    ttsQueue.offer(fullMessage);
-                    speakNextFromQueue();
-                }
-            });
-        }
-    };
-
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Don't unbind the service when activity stops - let it run in background
+        // The service continues running as a foreground service
+    }
 
     @Override
     protected void onDestroy() {
-        // Stop any ongoing scans
-        if (bluetoothLeScanner != null) {
-            try {
-                bluetoothLeScanner.stopScan(scanCallback); // You'll need to make scanCallback a class variable
-            } catch (Exception e) {
-                Log.e("BLE", "Error stopping scan: " + e.getMessage());
+        // Only unbind when activity is truly destroyed
+        if (serviceBound) {
+            if (bluetoothTTSService != null) {
+                bluetoothTTSService.setServiceCallback(null);
             }
+            unbindService(serviceConnection);
+            serviceBound = false;
         }
 
-        // Properly disconnect and clean up GATT
-        if (bluetoothGatt != null) {
-            bluetoothGatt.setCharacteristicNotification(writableCharacteristic, false);
-            bluetoothGatt.disconnect();
-            bluetoothGatt.close();
-            bluetoothGatt = null;
-        }
-
-        // Shutdown TTS
-        if (textToSpeech != null) {
-            textToSpeech.shutdown();
-        }
+        // Note: We don't stop the service here as it should continue running
+        // The service will be stopped when the user explicitly wants to disconnect
+        // or when the system needs to reclaim resources
 
         super.onDestroy();
+    }
+
+    // Method to stop the service (you can call this from a menu or button if needed)
+    public void stopBluetoothTTSService() {
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
+        stopService(new Intent(this, BluetoothTTSService.class));
     }
 }

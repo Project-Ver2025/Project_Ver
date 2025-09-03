@@ -41,7 +41,16 @@ public class PresetsFragment extends Fragment {
             b.setOnClickListener(v -> {
                 String msg = buttonLabels[index];
                 sendCommand.accept(index + " " + msg); // Send via BLE
+
+                // Trigger loading sound through MainActivity
+                if (getActivity() instanceof MainActivity) {
+                    MainActivity main = (MainActivity) getActivity();
+                    if (main.isServiceBound()) {
+                        main.getBluetoothService().startLoadingSoundFromCommand();
+                    }
+                }
             });
+
 
             b.setOnLongClickListener(v -> {
                 AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());

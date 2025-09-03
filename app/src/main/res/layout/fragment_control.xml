@@ -1,20 +1,27 @@
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:padding="24dp">
 
     <Button
         android:id="@+id/startStopButton"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
         android:layout_weight="1"
-        android:text="Start" />
+        android:text="Start"
+        android:backgroundTint="@android:color/holo_blue_light"
+        android:textSize="30sp"
+        android:textColor="@android:color/white"/>
 
     <Button
         android:id="@+id/cancelButton"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
         android:layout_weight="1"
-        android:text="Cancel" />
+        android:text="Cancel"
+        android:backgroundTint="@android:color/holo_red_light"
+        android:textSize="30sp"
+        android:textColor="@android:color/white"/>
 </LinearLayout>
