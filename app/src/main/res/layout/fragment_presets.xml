@@ -6,9 +6,104 @@
     android:columnCount="2"
     android:padding="16dp">
 
-    <Button android:id="@+id/button1" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1" android:backgroundTint="@android:color/holo_blue_light" android:textSize="30sp" android:textColor="@android:color/white"/>
-    <Button android:id="@+id/button2" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1" android:backgroundTint="@android:color/holo_red_light" android:textSize="30sp" android:textColor="@android:color/white"/>
-    <Button android:id="@+id/button3" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1" android:backgroundTint="@android:color/holo_orange_light" android:textSize="30sp" android:textColor="@android:color/white"/>
-    <Button android:id="@+id/button4" android:layout_width="0dp" android:layout_height="0dp" android:layout_columnWeight="1" android:layout_rowWeight="1" android:backgroundTint="@android:color/holo_green_light" android:textSize="30sp" android:textColor="@android:color/white"/>
+    <!-- Preset 1 -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_columnWeight="1"
+        android:layout_rowWeight="1">
+
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:backgroundTint="@android:color/holo_blue_light"
+            android:textSize="30sp"
+            android:textColor="@android:color/white"/>
+
+        <ImageButton
+            android:id="@+id/editButton1"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|end"
+            android:background="@android:color/transparent"
+            android:contentDescription="Edit preset 1"
+            android:src="@android:drawable/ic_menu_edit"/>
+    </FrameLayout>
+
+    <!-- Preset 2 -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_columnWeight="1"
+        android:layout_rowWeight="1">
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:backgroundTint="@android:color/holo_red_light"
+            android:textSize="30sp"
+            android:textColor="@android:color/white"/>
+
+        <ImageButton
+            android:id="@+id/editButton2"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|end"
+            android:background="@android:color/transparent"
+            android:contentDescription="Edit preset 2"
+            android:src="@android:drawable/ic_menu_edit"/>
+    </FrameLayout>
+
+    <!-- Preset 3 -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_columnWeight="1"
+        android:layout_rowWeight="1">
+
+        <Button
+            android:id="@+id/button3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:backgroundTint="@android:color/holo_orange_light"
+            android:textSize="30sp"
+            android:textColor="@android:color/white"/>
+
+        <ImageButton
+            android:id="@+id/editButton3"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|end"
+            android:background="@android:color/transparent"
+            android:contentDescription="Edit preset 3"
+            android:src="@android:drawable/ic_menu_edit"/>
+    </FrameLayout>
+
+    <!-- Preset 4 -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_columnWeight="1"
+        android:layout_rowWeight="1">
+
+        <Button
+            android:id="@+id/button4"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:backgroundTint="@android:color/holo_green_light"
+            android:textSize="30sp"
+            android:textColor="@android:color/white"/>
+
+        <ImageButton
+            android:id="@+id/editButton4"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|end"
+            android:background="@android:color/transparent"
+            android:contentDescription="Edit preset 4"
+            android:src="@android:drawable/ic_menu_edit"/>
+    </FrameLayout>
 
 </GridLayout>

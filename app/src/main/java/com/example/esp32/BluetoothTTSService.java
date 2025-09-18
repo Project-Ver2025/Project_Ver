@@ -72,6 +72,8 @@ public class BluetoothTTSService extends Service {
 
     public interface ServiceCallback {
         void onConnectionStateChanged(String status, int color);
+        void onControlCommandReceived(String command);
+
     }
 
     public class LocalBinder extends Binder {
@@ -202,6 +204,10 @@ public class BluetoothTTSService extends Service {
             textToSpeech.speak(text, TextToSpeech.QUEUE_ADD, null, "IMMEDIATE_" + System.currentTimeMillis());
         }
     }
+    public void playBeep() {
+        playSound(R.raw.beep); // Add beep.wav or beep.mp3 into res/raw/
+    }
+
 
     private Notification createNotification() {
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -381,6 +387,9 @@ public class BluetoothTTSService extends Service {
 //        }
         connectionState = ConnectionState.SCANNING;
         startScan();
+
+//        connectionState = ConnectionState.SCANNING;
+//        startScan();
     }
 
     private void updateConnectionStatusUI(String status, int color) {
@@ -484,9 +493,15 @@ public class BluetoothTTSService extends Service {
                     // Play sound instead of TTS
                     stopLoadingSound();
                     playSound(R.raw.loading); // You'll need to add a sound file to res/raw/
+                    if (serviceCallback != null) {
+                        serviceCallback.onControlCommandReceived("XStart");
+                    }
                 } else if (fullMessage.equals("XStop")) {
                     playSound(R.raw.complete);
                     new Handler(getMainLooper()).postDelayed(() -> startLoadingSound(), 500);
+                    if (serviceCallback != null) {
+                        serviceCallback.onControlCommandReceived("XStop");
+                    }
                 } else if (fullMessage.equals("XCancel")) {
                     playSound(R.raw.cancel);
 
@@ -496,7 +511,34 @@ public class BluetoothTTSService extends Service {
                     }
                     ttsQueue.clear();
                     isSpeaking = false;
+
+                    if (serviceCallback != null) {
+                        serviceCallback.onControlCommandReceived("XCancel");
+                    }
                 }
+                else if (fullMessage.startsWith("TTS speed: ")) {
+                    try {
+                        String numberStr = fullMessage.substring("TTS speed: ".length()).trim();
+                        float requestedRate = Float.parseFloat(numberStr);
+                        stopLoadingSound();
+
+                        // Clamp between 0.5x and 2.0x
+                        float clampedRate = Math.max(0.5f, Math.min(2.0f, requestedRate));
+                        updateSpeechRate(clampedRate);
+                        speakImmediate(String.format("Speech rate set to %.1fx", clampedRate));
+                        Log.d(TAG, "TTS speed updated to: " + clampedRate);
+                    } catch (NumberFormatException e) {
+                        Log.e(TAG, "Invalid TTS speed value: " + fullMessage, e);
+                    }
+                }
+                else if (fullMessage.startsWith("I understood ")) {
+                    stopLoadingSound();
+                    ttsQueue.offer(fullMessage);
+                    startLoadingSound();
+                    speakNextFromQueue();
+
+                }
+
 
                 else {
                     // Normal TTS processing

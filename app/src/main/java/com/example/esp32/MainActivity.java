@@ -112,6 +112,27 @@ public class MainActivity extends AppCompatActivity implements BluetoothTTSServi
         navView.setSelectedItemId(R.id.nav_control);
     }
 
+    @Override
+    public void onControlCommandReceived(String command) {
+        runOnUiThread(() -> {
+            Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+            if (fragment instanceof ControlFragment) {
+                ControlFragment controlFragment = (ControlFragment) fragment;
+                if ("XStart".equals(command)) {
+                    controlFragment.startStopButton.setText("Stop");
+                    controlFragment.isRecording = true;
+                } else if ("XCancel".equals(command)) {
+                    controlFragment.startStopButton.setText("Start");
+                    controlFragment.isRecording = false;
+                } else if ("XStop".equals(command)) {
+                    controlFragment.startStopButton.setText("Start");
+                    controlFragment.isRecording = false;
+                }
+            }
+        });
+    }
+
+
     private void startAndBindService() {
         // Start the foreground service
         Intent serviceIntent = new Intent(this, BluetoothTTSService.class);
