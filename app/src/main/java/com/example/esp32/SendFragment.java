@@ -1,6 +1,7 @@
 package com.example.esp32;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.*;
@@ -49,11 +50,12 @@ public class SendFragment extends Fragment {
                 sendCommand.accept(text);
                 editText.setText("");
 
-                // Trigger loading sound through MainActivity
                 if (getActivity() instanceof MainActivity) {
                     MainActivity main = (MainActivity) getActivity();
-                    if (main.isServiceBound()) {
-                        main.getBluetoothService().startLoadingSoundFromCommand();
+                    if (main.isServiceBound() && main.getBluetoothService() != null) {
+                        if (main.getBluetoothService().checkAndWarnConnection()) {
+                            main.getBluetoothService().startLoadingSoundFromCommand();
+                        }
                     }
                 }
             } else {
@@ -64,4 +66,27 @@ public class SendFragment extends Fragment {
 
         return view;
     }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // Access MainActivity methods
+        if (getActivity() instanceof MainActivity) {
+            MainActivity main = (MainActivity) getActivity();
+            SharedPreferences prefs = main.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+
+            int fontSize = prefs.getInt("font_size", 26);
+            int textColor = prefs.getInt("text_color", android.graphics.Color.BLACK);
+
+            // Apply font size + text color to all TextViews/Buttons in this fragment
+            main.applyGlobalFontSize(fontSize);
+            main.applyGlobalTextColor(textColor);
+
+            // Apply preset button colors
+            int btnColor = prefs.getInt("button_color_1", android.graphics.Color.LTGRAY);
+            main.applyGlobalButtonColor(1, btnColor);
+        }
+    }
+
 }

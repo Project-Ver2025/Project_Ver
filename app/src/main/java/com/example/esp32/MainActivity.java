@@ -1,16 +1,22 @@
 package com.example.esp32;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -59,6 +65,20 @@ public class MainActivity extends AppCompatActivity implements BluetoothTTSServi
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        showAgreementDialog();
+
+        int savedFontSize = getSharedPreferences("app_prefs", MODE_PRIVATE).getInt("font_size", 26);
+        int savedTextColor = getSharedPreferences("app_prefs", MODE_PRIVATE).getInt("text_color", Color.BLACK);
+
+        applyGlobalFontSize(savedFontSize);
+        applyGlobalTextColor(savedTextColor);
+
+        for (int i = 1; i <= 4; i++) {
+            int btnColor = getSharedPreferences("app_prefs", MODE_PRIVATE).getInt("button_color_" + i, Color.LTGRAY);
+            applyGlobalButtonColor(i, btnColor);
+        }
+
+
         // Check permissions first
         if (!hasPermissions()) {
             requestPermissions();
@@ -76,6 +96,20 @@ public class MainActivity extends AppCompatActivity implements BluetoothTTSServi
     public BluetoothTTSService getBluetoothService() {
         return bluetoothTTSService;
     }
+
+    private void showAgreementDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("User Agreement")
+                .setMessage("Images are processed securely in the cloud and are not stored. We do not keep a copy of the image, and our cloud provider does not use your data to train AI models. Please agree to continue")
+                .setCancelable(false) // prevent dismissing without choice
+                .setPositiveButton("I Agree", (dialog, which) -> {
+                })
+                .setNegativeButton("Exit", (dialog, which) -> {
+                    finish();
+                })
+                .show();
+    }
+
 
 
     private void setupBottomNavigation() {
@@ -290,4 +324,102 @@ public class MainActivity extends AppCompatActivity implements BluetoothTTSServi
         }
         stopService(new Intent(this, BluetoothTTSService.class));
     }
+
+
+    // === GLOBAL UI CUSTOMISATION HELPERS ===
+    public void applyGlobalFontSize(int sizeSp) {
+        View fragmentRoot = findViewById(R.id.fragment_container);
+        if (fragmentRoot != null) {
+            applyFontSizeToAll(fragmentRoot, sizeSp);
+        }
+    }
+
+    public void applyGlobalTextColor(int color) {
+        View fragmentRoot = findViewById(R.id.fragment_container);
+        if (fragmentRoot != null) {
+            applyTextColorToAll(fragmentRoot, color);
+        }
+    }
+
+
+    public void applyGlobalFontSize(int sizeSp, View root) {
+        if (root != null) {
+            applyFontSizeToAll(root, sizeSp);
+        }
+    }
+
+
+    public void applyGlobalTextColor(int color, View root) {
+        if (root != null) {
+            applyTextColorToAll(root, color);
+        }
+    }
+
+    public void applyGlobalButtonColor(int buttonIndex, int color) {
+        // Save per-button color in prefs
+        getSharedPreferences("app_prefs", MODE_PRIVATE)
+                .edit()
+                .putInt("button_color_" + buttonIndex, color)
+                .apply();
+
+        View root = findViewById(android.R.id.content);
+        if (root != null) {
+            applyButtonColorToAll(root, buttonIndex, color);
+        }
+    }
+
+    public void applyGlobalButtonColor(int buttonIndex, int color, View root) {
+        // Save per-button color in prefs
+        getSharedPreferences("app_prefs", MODE_PRIVATE)
+                .edit()
+                .putInt("button_color_" + buttonIndex, color)
+                .apply();
+
+        if (root != null) {
+            applyButtonColorToAll(root, buttonIndex, color);
+        }
+    }
+
+
+    // === Recursive helpers ===
+    private void applyFontSizeToAll(View root, int sizeSp) {
+        if (root instanceof TextView) {
+            ((TextView) root).setTextSize(sizeSp);
+        } else if (root instanceof Button) {
+            ((Button) root).setTextSize(sizeSp);
+        } else if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                applyFontSizeToAll(group.getChildAt(i), sizeSp);
+            }
+        }
+    }
+
+    private void applyTextColorToAll(View root, int color) {
+        if (root instanceof TextView) {
+            ((TextView) root).setTextColor(color);
+        } else if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                applyTextColorToAll(group.getChildAt(i), color);
+            }
+        }
+    }
+
+    private void applyButtonColorToAll(View root, int buttonIndex, int color) {
+        if (root instanceof Button) {
+            Button btn = (Button) root;
+            Object tag = btn.getTag();
+            if (tag != null && tag.equals("button" + buttonIndex)) {
+                btn.setBackgroundColor(color);
+            }
+        } else if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                applyButtonColorToAll(group.getChildAt(i), buttonIndex, color);
+            }
+        }
+    }
+
+
 }

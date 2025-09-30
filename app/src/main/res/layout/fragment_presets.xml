@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:rowCount="2"
     android:columnCount="2"
-    android:padding="16dp">
+    android:paddingTop="32dp">
 
     <!-- Preset 1 -->
     <FrameLayout
@@ -15,20 +15,24 @@
 
         <Button
             android:id="@+id/button1"
+            style="@style/RectButton"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:backgroundTint="@android:color/holo_blue_light"
             android:textSize="30sp"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:tag="button1"/>
 
         <ImageButton
             android:id="@+id/editButton1"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="top|end"
-            android:background="@android:color/transparent"
-            android:contentDescription="Edit preset 1"
-            android:src="@android:drawable/ic_menu_edit"/>
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_gravity="top"
+            android:background="#80000000"
+            android:contentDescription="Edit preset 1 - Double tap to edit this button"
+            android:src="@android:drawable/ic_menu_edit"
+            android:scaleType="center"
+            android:padding="16dp"/>
     </FrameLayout>
 
     <!-- Preset 2 -->
@@ -40,20 +44,24 @@
 
         <Button
             android:id="@+id/button2"
+            style="@style/RectButton"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:backgroundTint="@android:color/holo_red_light"
             android:textSize="30sp"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:tag="button2"/>
 
         <ImageButton
             android:id="@+id/editButton2"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="top|end"
-            android:background="@android:color/transparent"
-            android:contentDescription="Edit preset 2"
-            android:src="@android:drawable/ic_menu_edit"/>
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_gravity="top"
+            android:background="#80000000"
+            android:contentDescription="Edit preset 2 - Double tap to edit this button"
+            android:src="@android:drawable/ic_menu_edit"
+            android:scaleType="center"
+            android:padding="16dp"/>
     </FrameLayout>
 
     <!-- Preset 3 -->
@@ -65,20 +73,24 @@
 
         <Button
             android:id="@+id/button3"
+            style="@style/RectButton"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:backgroundTint="@android:color/holo_orange_light"
             android:textSize="30sp"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:tag="button3"/>
 
         <ImageButton
             android:id="@+id/editButton3"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="top|end"
-            android:background="@android:color/transparent"
-            android:contentDescription="Edit preset 3"
-            android:src="@android:drawable/ic_menu_edit"/>
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_gravity="top"
+            android:background="#80000000"
+            android:contentDescription="Edit preset 3 - Double tap to edit this button"
+            android:src="@android:drawable/ic_menu_edit"
+            android:scaleType="center"
+            android:padding="16dp"/>
     </FrameLayout>
 
     <!-- Preset 4 -->
@@ -90,20 +102,24 @@
 
         <Button
             android:id="@+id/button4"
+            style="@style/RectButton"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:backgroundTint="@android:color/holo_green_light"
             android:textSize="30sp"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:tag="button4"/>
 
         <ImageButton
             android:id="@+id/editButton4"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="top|end"
-            android:background="@android:color/transparent"
-            android:contentDescription="Edit preset 4"
-            android:src="@android:drawable/ic_menu_edit"/>
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_gravity="top"
+            android:background="#80000000"
+            android:contentDescription="Edit preset 4 - Double tap to edit this button"
+            android:src="@android:drawable/ic_menu_edit"
+            android:scaleType="center"
+            android:padding="16dp"/>
     </FrameLayout>
 
 </GridLayout>

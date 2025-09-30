@@ -229,8 +229,8 @@ public class BluetoothTTSService extends Service {
 
     String getConnectionStatusText() {
         switch (connectionState) {
-            case SCANNING: return "Scanning for device...";
-            case CONNECTING: return "Connecting...";
+            case SCANNING: return "Scanning for device ...";
+            case CONNECTING: return "Connecting ...";
             case CONNECTED: return "Connected to ESP32";
             case DISCONNECTED: return "Disconnected";
             default: return "Status unknown";
@@ -405,6 +405,17 @@ public class BluetoothTTSService extends Service {
     public ConnectionState getConnectionState() {
         return connectionState;
     }
+
+    public boolean checkAndWarnConnection() {
+        if (connectionState != ConnectionState.CONNECTED) {
+            if (textToSpeech != null) {
+                textToSpeech.speak("Device not connected", TextToSpeech.QUEUE_FLUSH, null, "NO_DEVICE");
+            }
+            return false;
+        }
+        return true;
+    }
+
     public int getConnectionStatusColor() {
         switch (connectionState) {
             case SCANNING: return Color.YELLOW;

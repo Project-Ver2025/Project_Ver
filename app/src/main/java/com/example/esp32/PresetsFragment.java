@@ -21,7 +21,7 @@ import android.speech.RecognizerIntent;
 import java.util.Locale;
 
 public class PresetsFragment extends Fragment {
-    private final String[] buttonLabels = new String[] {"One", "Two", "Three", "Four"};
+    private final String[] buttonLabels = new String[] {"What can you see", "Tell me when you see a tree", "What does this say", "Does this contain gluten"};
     private final Consumer<String> sendCommand;
     private static final String PREFS_NAME = "PresetPrefs";
     private static final int SPEECH_REQUEST_CODE = 100;
@@ -67,11 +67,15 @@ public class PresetsFragment extends Fragment {
                 // Trigger loading sound through MainActivity
                 if (getActivity() instanceof MainActivity) {
                     MainActivity main = (MainActivity) getActivity();
-                    if (main.isServiceBound()) {
-                        main.getBluetoothService().startLoadingSoundFromCommand();
+                    if (main.isServiceBound() && main.getBluetoothService() != null) {
+                        if (main.getBluetoothService().checkAndWarnConnection()) {
+                            main.getBluetoothService().startLoadingSoundFromCommand();
+                        }
                     }
                 }
             });
+
+
 
 
 //            b.setOnLongClickListener(v -> {
@@ -127,6 +131,32 @@ public class PresetsFragment extends Fragment {
 
         return view;
     }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // Access MainActivity methods
+        if (getActivity() instanceof MainActivity) {
+            MainActivity main = (MainActivity) getActivity();
+            SharedPreferences prefs = main.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+
+            int fontSize = prefs.getInt("font_size", 26);
+            int textColor = prefs.getInt("text_color", android.graphics.Color.BLACK);
+
+            // Apply text settings
+            main.applyGlobalFontSize(fontSize, view);   // pass THIS fragment’s root
+            main.applyGlobalTextColor(textColor, view);
+
+            // Apply button colors
+            for (int i = 1; i <= 4; i++) {
+                int btnColor = prefs.getInt("button_color_" + i, android.graphics.Color.LTGRAY);
+                main.applyGlobalButtonColor(i, btnColor, view);
+            }
+        }
+
+    }
+
 
     private void startSpeechToText() {
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
